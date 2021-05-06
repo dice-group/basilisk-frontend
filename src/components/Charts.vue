@@ -20,7 +20,9 @@
         <Barchart  v-bind:data="barChartData"/>
         <Scatterplot  v-bind:data="scatterplotData" v-bind:triplestores="selectedTriplestores"/>
         <Boxplot v-bind:data="boxplotData"/>
-        <md-button v-if="barChartData.length || scatterplotData.length || boxplotData.length" id="downloadButton" class="md-raised" @click="downloadChart()">Download chart</md-button>
+        <md-button v-if="barChartData.length || scatterplotData.length || boxplotData.length" id="downloadButton" class="md-raised" @click="downloadChartAsSvg()">Download svg</md-button>
+        <md-button v-if="barChartData.length || scatterplotData.length || boxplotData.length" id="downloadButton" class="md-raised" @click="downloadChartAsPdf()">Download pdf</md-button>
+        <md-button v-if="barChartData.length || scatterplotData.length || boxplotData.length" id="downloadButton" class="md-raised" @click="downloadChartAsPng()">Download png</md-button>
         <md-button v-if="barChartData.length || scatterplotData.length || boxplotData.length" id="downloadButton" class="md-raised" @click="downloadCSV()">Download data</md-button>
       </div>
     </div>
@@ -31,6 +33,8 @@
 import { Component, Prop, Vue, Mixins } from 'vue-property-decorator';
 import * as d3 from 'd3';
 import * as savePng from 'save-svg-as-png';
+import { jsPDF } from 'jspdf'
+import 'svg2pdf.js'
 
 import Barchart from './Barchart.vue';
 import Scatterplot from './Scatterplot.vue';
@@ -86,9 +90,36 @@ export default class Charts extends Vue {
     // do something
   }
 
-  public downloadChart(): void {
+  public downloadChartAsPng(): void {
     // Get the d3js SVG element and save using saveSvgAsPng.js
     savePng.saveSvgAsPng(document.getElementsByTagName("svg")[0], "plot.png", {scale: 2, backgroundColor: "#FFFFFF"});
+  }
+
+  public downloadChartAsSvg(): void {
+    // save as svg
+    var svgData = document.getElementsByTagName("svg")[0].outerHTML;
+    var svgBlob = new Blob([svgData], {type:"image/svg+xml;charset=utf-8"});
+    var svgUrl = URL.createObjectURL(svgBlob);
+    var downloadLink = document.createElement("a");
+    downloadLink.href = svgUrl;
+    downloadLink.download = "plot.svg";
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    document.body.removeChild(downloadLink);
+  }
+
+  public downloadChartAsPdf(): void {
+    //save as pdf
+    const element = document.getElementsByTagName("svg")[0];
+    let width = element.clientWidth;
+    let height = element.clientHeight;
+    const doc = new jsPDF(width > height ? 'l' : 'p', 'pt', [width, height]);
+    doc
+      .svg(element)
+      .then(() => {
+        // save the created pdf
+        doc.save('plot.pdf')
+      })
   }
 
   public selectDataset(name: string): void{
