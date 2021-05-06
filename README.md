@@ -1,4 +1,4 @@
-# basislisk-frontend
+# basilisk-frontend
 
 ## Project setup
 ```
