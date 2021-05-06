@@ -1,2 +1,2 @@
-# basislisk-frontend
+# basilisk-frontend
 
