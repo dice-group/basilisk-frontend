@@ -24,6 +24,7 @@ export default class Scatterplot extends Vue {
   dataChanged() {
     if(this.data.length){
       d3.selectAll("svg").remove();
+      this.checked = false;
       let data = JSON.parse(JSON.stringify(this.data));
       this.drawScatterplot(data);
     }
@@ -31,72 +32,6 @@ export default class Scatterplot extends Vue {
 
   public drawScatterplot(data: ScatterplotData[]): void {
 
-    // // set the dimensions and margins of the graph
-    // let margin = {top: 10, right: 30, bottom: 100, left: 60},
-    //     width = 900 - margin.left - margin.right,
-    //     height = 460 - margin.top - margin.bottom;
-
-    // // append the svg object to the body of the page
-    // let svg = d3.select("#my_dataviz")
-    //   .append("svg")
-    //     .attr("width", width + margin.left + margin.right)
-    //     .attr("height", height + margin.top + margin.bottom)
-    //   .append("g")
-    //     .attr("transform",
-    //           "translate(" + margin.left + "," + margin.top + ")");
-
-    // // Add X axis
-    // let x = d3.scaleLinear()
-    //   .domain([0, 20])
-    //   .range([ 0, width ]);
-    // svg.append("g")
-    //   .attr("transform", "translate(0," + height + ")")
-    //   .call(d3.axisBottom(x));
-
-    // // Add Y axis
-    // let y = d3.scaleLinear()
-    //   .domain([1000, 116289199])
-    //   .range([height , 0]); //
-    // svg.append("g")
-    //   .call(d3.axisLeft(y).tickFormat(function(d){return d/100000000 +"* 10^8"})); // 
-
-    // // Add dots
-    // svg.append('g')
-    //   .selectAll("dot")
-    //   .data(data)
-    //   .enter()
-    //   .append("circle")
-    //     .attr("cx", function (d) { return x(d.QPS); } )
-    //     .attr("cy", function (d) { return y(d.resultSize); } )
-    //     .attr("r", 1.5)
-    //     .style("fill", "#69b3a2")
-
-
-    // d3.select("#logCheckbox").on("click", function() {
-    //   if(this.checked) {
-    //     y = d3.scaleLog()
-    //       .domain([1000, 116289199])
-    //       .range([margin.left, width - margin.left - margin.right]);
-    //   } else {
-    //     y = d3.scaleLinear()
-    //       .domain([1000, 116289199])
-    //       .range([height , 0]); //
-    //       svg.append("g")
-    //       .call(d3.axisLeft(y).tickFormat(function(d){return d/100000000 +"* 10^8"})); //  
-    //   }
-    //   // y.scale(y);
-    //   // d3.select("g")
-    //   //   .transition()
-    //   //   .duration(500)
-    //   //   .call(d3.axisLeft(y).tickFormat(function(d){return d/100000000 +"* 10^8"}));
-      
-    //   d3.selectAll("circle")
-    //     .transition()
-    //     .delay(400)
-    //     .duration(600)
-    //     .attr("cy", function(d) { return y(d.resultSize); })
-        
-    // })
   let margin = {top: 30, right: 30, bottom: 30, left: 60};
   let w = 900 - margin.left - margin.right;
   let h = 460 - margin.top - margin.bottom;

@@ -19,7 +19,7 @@
       <div class="md-layout-item">
         <Barchart  v-bind:data="barChartData"/>
         <Scatterplot  v-bind:data="scatterplotData" v-bind:triplestores="selectedTriplestores"/>
-        <Boxplot v-bind:data="boxplotData"/>
+        <Boxplot v-bind:data="boxplotData" v-bind:triplestores="selectedTriplestores"/>
         <md-button v-if="barChartData.length || scatterplotData.length || boxplotData.length" id="downloadButton" class="md-raised" @click="downloadChartAsSvg()">Download svg</md-button>
         <md-button v-if="barChartData.length || scatterplotData.length || boxplotData.length" id="downloadButton" class="md-raised" @click="downloadChartAsPdf()">Download pdf</md-button>
         <md-button v-if="barChartData.length || scatterplotData.length || boxplotData.length" id="downloadButton" class="md-raised" @click="downloadChartAsPng()">Download png</md-button>
@@ -126,6 +126,8 @@ export default class Charts extends Vue {
     this.availableTriplestores.splice(0);
     this.datasetName = name;
     this.getTriplestoresForDataset(name);
+    this.chartType = "";
+    this.clearChart();
   }
   // with async await
   public async getAllResults(query: string): Promise<any>{
@@ -219,11 +221,10 @@ export default class Charts extends Vue {
       this.barChartData = data;
     } else if(this.metricTypes[0].metrics.includes(name)){ //Scatterplot
       let data =  await this.getDataForScatterplot(this.datasetName, this.selectedTriplestores, name);
-      console.log(data);
       this.scatterplotData = data;
     } else if(this.metricTypes[2].metrics.includes(name)){ //Boxplot
       let data =  await this.getDataForBarChart(this.datasetName, this.selectedTriplestores, name);
-      this.boxplotData = data.map((i: any) => {return i.value});
+      this.boxplotData = data;
     }
   }
 

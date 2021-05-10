@@ -5,3 +5,4 @@ declare module '*.vue' {
 
 declare module 'vue-material';
 declare module 'save-svg-as-png';
+declare module 'd3-collection';

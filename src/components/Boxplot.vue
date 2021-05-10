@@ -1,5 +1,11 @@
 <template>
+  <div>
+    <div v-if="data.length" class="controls">
+      <input v-model="checked" id="logCheckbox" type="checkbox"  @click="clickLog()" value="logscale"/>
+      <label for="logscale">Log scale</label>
+    </div>
     <div id="my_dataviz"></div>
+  </div>
 </template>
 
 <script lang="ts">
@@ -7,15 +13,19 @@ import { Component, Prop, Vue, Watch } from 'vue-property-decorator';
 import * as d3 from 'd3';
 
 import {BoxplotData} from "../Interfaces";
+import {nest} from 'd3-collection';
 
 @Component
 export default class Boxplot extends Vue {
   @Prop({required: true}) data!: BoxplotData[];
+  @Prop({ required: true }) triplestores!: [];
+  private checked = false;
 
   @Watch("data")
   dataChanged(): void {
     if(this.data.length){
       d3.selectAll("svg").remove();
+      this.checked = false;
       let data = JSON.parse(JSON.stringify(this.data));
       this.drawBoxplot(data);
     }
@@ -23,9 +33,9 @@ export default class Boxplot extends Vue {
 
   public drawBoxplot(data: BoxplotData[]): void {
 
-    var margin = {top: 10, right: 30, bottom: 30, left: 40},
-      width = 400 - margin.left - margin.right,
-      height = 400 - margin.top - margin.bottom;
+    var margin = {top: 10, right: 30, bottom: 150, left: 50},
+      width = 900 - margin.left - margin.right,
+      height = 460 - margin.top - margin.bottom;
 
     // append the svg object to the body of the page
     var svg = d3.select("#my_dataviz")
@@ -36,62 +46,184 @@ export default class Boxplot extends Vue {
       .attr("transform",
             "translate(" + margin.left + "," + margin.top + ")");
 
-    // data = [12,19,11,13,12,22,13,4,15,16,18,19,20,12,11,9];
-    // Compute summary statistics used for the box:
-    var data_sorted = data.sort(<any>d3.ascending)
-    var q1 = d3.quantile(<any>data_sorted, .25)
-    var median = d3.quantile(<any>data_sorted, .5)
-    var q3 = d3.quantile(<any>data_sorted, .75)
-    if(q1 && q3){
-      var interQuantileRange = q3 - q1
-      var min = q1 - 1.5 * interQuantileRange
-      var max = q1 + 1.5 * interQuantileRange
+    var sumstat = nest() // nest function allows to group the calculation per level of a factor
+    .key(function(d: BoxplotData) { return d.triplestore;})
+    .rollup(function(d: BoxplotData[]) {
+      let q1 = d3.quantile(d.map(function(g: BoxplotData) { return g.value;}).sort(d3.ascending),.25);
+      let median = d3.quantile(d.map(function(g: BoxplotData) { return g.value;}).sort(d3.ascending),.5);
+      let q3 = d3.quantile(d.map(function(g: BoxplotData) { return g.value;}).sort(d3.ascending),.75);
+      if(q1 && q3){
+        let interQuantileRange = q3 - q1;
+        let min = q1 - 1.5 * interQuantileRange;
+        let max = q3 + 1.5 * interQuantileRange;
+        return({q1: q1, median: median, q3: q3, interQuantileRange: interQuantileRange, min: min, max: max})
+      }
+    })
+    .entries(data)
 
-      // Show the Y scale
-      var y = d3.scaleLinear()
-        .domain([50,5000])
-        .range([height, 0]);
-      svg.call(d3.axisLeft(y))
+    // Show the X scale
+    var x = d3.scaleBand()
+      .range([ 0, width ])
+      .domain(this.triplestores)
+      .paddingInner(1)
+      .paddingOuter(.5)
+    svg.append("g")
+      .attr("transform", "translate(0," + height + ")")
+      .call(d3.axisBottom(x))
+      .selectAll("text")
+        .attr("transform", "translate(-10,0)rotate(-45)")
+        .style("text-anchor", "end");
 
-      // a few features for the box
-      var center = 200
-      width = 100
+    // Show the Y scale
+    var y = d3.scaleLinear()
+      .domain([-5000,10000])
+      .range([height, 0])
+    svg.append("g").attr("class", "axis y").call(d3.axisLeft(y))
 
-      // Show the main vertical line
-      svg
-      .append("line")
-        .attr("x1", center)
-        .attr("x2", center)
-        .attr("y1", y(min) )
-        .attr("y2", y(max) )
-        .attr("stroke", "black")
-
-      // Show the box
-      svg
-      .append("rect")
-        .attr("x", center - width/2)
-        .attr("y", y(q3) )
-        .attr("height", (y(q1)-y(q3)) )
-        .attr("width", width )
-        .attr("stroke", "black")
-        .style("fill", "#69b3a2")
-
-      // show median, min and max horizontal lines
-      svg
-      .selectAll("toto")
-      .data([min, median, max])
+    // Show the main vertical line
+    svg
+      .selectAll("vertLines")
+      .data(sumstat)
       .enter()
       .append("line")
-        .attr("x1", center-width/2)
-        .attr("x2", center+width/2)
-        .attr("y1", function(d: any){ return(y(d))} )
-        .attr("y2", function(d: any){ return(y(d))} )
+        .attr("class", "vertLine")
+        .attr("x1", function(d: any): any {return(x(d.key))})
+        .attr("x2", function(d: any): any {return(x(d.key))})
+        .attr("y1", function(d: any): any {return(y(d.value.min))})
+        .attr("y2", function(d: any): any {return(y(d.value.max))})
         .attr("stroke", "black")
+        .style("width", 40)
 
-    }
+    // rectangle for the main box
+    var boxWidth = 100
+    svg
+      .selectAll("boxes")
+      .data(sumstat)
+      .enter()
+      .append("rect")
+          .attr("x", function(d: any): any{
+            let xdKey = x(d.key);
+            if(xdKey){
+              return (xdKey-boxWidth/2);
+            }
+          })
+          .attr("y", function(d: any){return(y(d.value.q3))})
+          .attr("height", function(d: any){return(y(d.value.q1)-y(d.value.q3))})
+          .attr("width", boxWidth )
+          .attr("stroke", "black")
+          .style("fill", "#69b3a2")
+
+    // Show the median
+    svg
+      .selectAll("medianLines")
+      .data(sumstat)
+      .enter()
+      .append("line")
+        .attr("class", "medianLine")
+        .attr("x1", function(d: any): any{
+          let xdKey = x(d.key);
+          if(xdKey){
+            return (xdKey-boxWidth/2);
+          }
+        })
+        .attr("x2", function(d: any): any{
+          let xdKey = x(d.key);
+          if(xdKey){
+            return (xdKey+boxWidth/2);
+          }
+        })
+        .attr("y1", function(d: any){return(y(d.value.median))})
+        .attr("y2", function(d: any){return(y(d.value.median))})
+        .attr("stroke", "black")
+        .style("width", 80)
+
+  // Add individual points with jitter
+  var jitterWidth = 50
+  svg
+    .selectAll("indPoints")
+    .data(data)
+    .enter()
+    .append("circle")
+      .attr("cx", function(d: BoxplotData): any{
+        let xts = x(d.triplestore);
+        if(xts){
+          return(xts - jitterWidth/2 + Math.random()*jitterWidth)
+        }
+      })
+      .attr("cy", function(d: BoxplotData){return(y(d.value))})
+      .attr("r", 4)
+      .style("fill", "white")
+      .attr("stroke", "black")
+
   }
 
+  public clickLog(): void{
+    var margin = {top: 10, right: 30, bottom: 150, left: 50},
+      w = 900 - margin.left - margin.right,
+      h = 460 - margin.top - margin.bottom;
+    let yScale: any;
+    let yAxis: any;
+ 
+    if(this.checked) {
+      yScale = d3.scaleLinear()
+        .domain([-5000,10000])
+        .range([h, 0])
+      
+    } else {
+      yScale = d3.scaleLog()
+        .domain([0.01,10000])
+        .range([h, 0])
+      
+    }
+    yAxis = d3.axisLeft(yScale)
+    
+    d3.select("g.axis.y")
+      .transition()
+      .duration(500)
+      .call(yAxis);
 
+    d3.selectAll("line.vertLine")
+      .transition()
+      .delay(400)
+      .duration(600)
+      .attr("y1", function(d: any): any {
+        let minVal = d.value.min;
+        if (minVal < 0){
+          minVal = 0.01;
+        }
+        return(yScale(minVal))
+      })
+      .attr("y2", function(d: any): any {
+        return(yScale(d.value.max))
+      })
+
+    d3.selectAll("line.medianLine")
+      .transition()
+      .delay(400)
+      .duration(600)
+      .attr("y1", function(d: any){return(yScale(d.value.median))})
+      .attr("y2", function(d: any){return(yScale(d.value.median))})
+
+    d3.selectAll("rect")
+      .transition()
+      .delay(400)
+      .duration(600)
+      .attr("y", function(d: any){return(yScale(d.value.q3))})
+      .attr("height", function(d: any){return(yScale(d.value.q1)-yScale(d.value.q3))})
+    
+    d3.selectAll("circle")
+      .transition()
+      .delay(400)
+      .duration(600)
+      .attr("cy", function(d: any) { 
+        let val = d.value;
+        if (val < 0){
+          val = 0.01;
+        }
+        return yScale(val); 
+      })
+
+  }
 }
 </script>
 
